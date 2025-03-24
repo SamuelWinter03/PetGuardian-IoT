@@ -1,103 +1,120 @@
 import time
 import json
 import os
-
-# Try to import Raspberry Pi GPIO library; if unavailable, use virtual mode
-try:
-    import RPi.GPIO as GPIO
-    REAL_SENSOR = True  # Flag to indicate real sensor usage
-except ImportError:
-    print("RPi.GPIO not found! Running in virtual mode...")
-    import keyboard  # Virtual mode: Simulate sound detection with keyboard
-    REAL_SENSOR = False
-
-# GPIO Pin for the sound sensor (Only used if running on a real Pi)
-SOUND_SENSOR_PIN = 17
-
-if REAL_SENSOR:
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(SOUND_SENSOR_PIN, GPIO.IN)
-
+import random
 import paho.mqtt.client as mqtt
 
-BROKER = "test.mosquitto.org"  # Free MQTT broker
-TOPIC = "petguardian/iot"
+# Try to import Raspberry Pi GPIO library
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    REAL_SENSOR = True
+except ImportError:
+    print("GPIO module not found! Running in virtual mode...")
+    REAL_SENSOR = False
 
-def send_data_to_cloud(event):
-    """Send detected sound event to an MQTT broker."""
+# Azure IoT Hub connection string
+CONNECTION_STRING = "HostName=IoTPawTrack.azure-devices.net;DeviceId=collar01;SharedAccessKey=ShzFs2jgI06rAjksNrEst8Byb8x2ljbHrBGYT+raQ1E="
+
+from azure.iot.device import IoTHubDeviceClient, Message
+
+# Configuration
+SENSOR_PIN = 17  # GPIO pin to simulate light detection (e.g., button or photodiode)
+BROKER = "broker.hivemq.com"
+TOPIC = "petguardian/light"
+
+# Setup GPIO pin if using physical sensor
+if REAL_SENSOR:
+    GPIO.setup(SENSOR_PIN, GPIO.IN)
+
+def send_data_to_cloud(light_data):
+    """Send light sensor data to MQTT broker."""
     client = mqtt.Client()
-    client.connect(BROKER)
-    payload = json.dumps({
-        "sensor": "acoustic", 
-        "event": event, 
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-    })
-    client.publish(TOPIC, payload)
-    client.disconnect()
-    print(f"Sent event to MQTT Broker: {payload}")
+    try:
+        client.connect(BROKER, port=1883, keepalive=60)
+        payload = json.dumps({
+            "deviceId": "collar01",  # MUST match what Cosmos routing expects
+            "sensor": "led_light_sensor" if REAL_SENSOR else "simulated_led_light",
+            "lux": light_data["lux"],
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        client.publish(TOPIC, payload)
+        print(f"✅ Sent Light Data to MQTT Broker: {payload}")
+    except Exception as e:
+        print(f"❌ Failed to connect to MQTT broker: {e}")
+    finally:
+        client.disconnect()
 
-def log_sound_event(event):
-    """Logs detected sound events into a JSON file with multiple entries."""
-    log_entry = {"timestamp": time.strftime("%Y-%m-%d %H:%M:%S"), "event": event}
+def send_data_to_azure(light_data):
+    """Send light sensor data to Azure IoT Hub."""
+    try:
+        client = IoTHubDeviceClient.create_from_connection_string(CONNECTION_STRING)
+        payload = json.dumps({
+            "deviceId": "collar01",  # MUST match what Cosmos routing expects
+            "sensor": "led_light_sensor" if REAL_SENSOR else "simulated_led_light",
+            "lux": light_data["lux"],
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        message = Message(payload)
+        client.send_message(message)
+        print(f"✅ Sent Light Data to Azure IoT Hub: {payload}")
+        client.disconnect()
+    except Exception as e:
+        print(f"❌ Failed to send data to Azure IoT Hub: {e}")
 
-    if os.path.exists("sound_log.json") and os.path.getsize("sound_log.json") > 0:
+def log_light_data(light_data):
+    """Logs light sensor data into a JSON file."""
+    log_entry = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "lux": light_data["lux"]
+    }
+
+    if os.path.exists("light_log.json"):
         try:
-            with open("sound_log.json", "r") as log_file:
+            with open("light_log.json", "r") as log_file:
                 logs = json.load(log_file)
             if not isinstance(logs, list):
-                logs = []  
+                logs = []
         except (json.JSONDecodeError, FileNotFoundError):
-            logs = []  
+            logs = []
     else:
-        logs = []  
+        logs = []
 
     logs.append(log_entry)
 
-    with open("sound_log.json", "w") as log_file:
+    with open("light_log.json", "w") as log_file:
         json.dump(logs, log_file, indent=4)
 
-    print(f"Logged: {event}")
+    print(f"📝 Logged Light Data: {log_entry}")
 
-def detect_sound():
-    """Detects sound using either a real acoustic sensor or simulated key presses."""
+def get_light_level():
+    """Gets light level from physical sensor or simulates it."""
     if REAL_SENSOR:
-        print("Listening for real sound events on Raspberry Pi...")
-        while True:
-            sound_detected = GPIO.input(SOUND_SENSOR_PIN)
-            if sound_detected == GPIO.HIGH:
-                print("Real Sound Detected!")
-                log_sound_event("real_sound")
-                send_data_to_cloud("real_sound")
-                time.sleep(0.3)  
-                return "real_sound"
-            time.sleep(0.1)
+        if GPIO.input(SENSOR_PIN):
+            lux = random.uniform(300, 1000)  # Simulate bright environment
+        else:
+            lux = random.uniform(0, 299)     # Simulate dark environment
     else:
-        print("Virtual Sound Detection Active...")
-        print("Press 'B' for Bark, 'C' for Car Noise, 'X' to Exit.")
-        while True:
-            event = keyboard.read_event()  
-            if event.event_type == keyboard.KEY_DOWN:  
-                if event.name == 'b':  
-                    print("Simulated Bark Detected!")
-                    log_sound_event("bark")
-                    send_data_to_cloud("bark") 
-                    time.sleep(0.3)  
-                    return "bark"
-                elif event.name == 'c':
-                    print("Simulated Car Noise Detected!")
-                    log_sound_event("car_noise")
-                    send_data_to_cloud("car_noise")  
-                    time.sleep(0.3)
-                    return "car_noise"
-                elif event.name == 'x':
-                    print("Exiting virtual sound detection.")
-                    break
-            time.sleep(0.1)
+        lux = random.uniform(0, 1000)        # Fully virtual
+    return {"lux": lux}
+
+def light_tracking():
+    """Tracks and logs light sensor data continuously."""
+    print("🔆 Light Sensor (Physical/Virtual) Active...")
+    print("Press Ctrl+C to stop.")
+
+    while True:
+        light_data = get_light_level()
+        log_light_data(light_data)
+        send_data_to_cloud(light_data)
+        send_data_to_azure(light_data)
+        time.sleep(5)
 
 if __name__ == "__main__":
     try:
-        detect_sound()
+        light_tracking()
     except KeyboardInterrupt:
-        print("\nStopping sound detection...")
         if REAL_SENSOR:
             GPIO.cleanup()
+        print("\n🛑 Stopping light sensor tracking...")

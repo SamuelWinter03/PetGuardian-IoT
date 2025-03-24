@@ -3,6 +3,7 @@ import json
 import os
 import random
 import paho.mqtt.client as mqtt
+from azure.iot.device import IoTHubDeviceClient, Message
 
 # Try to import Raspberry Pi GPIO library
 try:
