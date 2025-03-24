@@ -29,7 +29,7 @@ def send_data_to_cloud(light_data):
     try:
         client.connect(BROKER, port=1883, keepalive=60)
         payload = json.dumps({
-            "sensor": "simulated_led_light",
+            "sensor": "led_light_sensor" if REAL_SENSOR else "simulated_led_light",
             "lux": light_data["lux"],
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         })
