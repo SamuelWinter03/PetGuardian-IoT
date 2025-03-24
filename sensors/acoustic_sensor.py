@@ -46,22 +46,24 @@ def send_data_to_cloud(light_data):
     finally:
         client.disconnect()
 
-def send_data_to_azure(light_data):
-    """Send light sensor data to Azure IoT Hub."""
+def send_data_to_azure(event):
+    """Send detected sound event to Azure IoT Hub."""
     try:
         client = IoTHubDeviceClient.create_from_connection_string(CONNECTION_STRING)
         payload = json.dumps({
-            "deviceId": "collar01",  # MUST match what Cosmos routing expects
-            "sensor": "led_light_sensor" if REAL_SENSOR else "simulated_led_light",
-            "lux": light_data["lux"],
+            "deviceId": "collar01",  # Required for Cosmos routing
+            "sensor": "acoustic",
+            "event": event,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         })
         message = Message(payload)
+        print("📤 Azure Payload:", payload)
+
         client.send_message(message)
-        print(f"✅ Sent Light Data to Azure IoT Hub: {payload}")
+        print(f"✅ Sent event to Azure IoT Hub: {payload}")
         client.disconnect()
     except Exception as e:
-        print(f"❌ Failed to send data to Azure IoT Hub: {e}")
+        print(f"❌ Failed to send event to Azure IoT Hub: {e}")
 
 def log_light_data(light_data):
     """Logs light sensor data into a JSON file."""
@@ -109,6 +111,7 @@ def light_tracking():
         log_light_data(light_data)
         send_data_to_cloud(light_data)
         send_data_to_azure(light_data)
+        
         time.sleep(5)
 
 if __name__ == "__main__":
