@@ -16,7 +16,7 @@ except ImportError:
 
 # Configuration
 SENSOR_PIN = 17  # GPIO pin to simulate light detection (e.g., button or photodiode)
-BROKER = "test.mosquitto.org"
+BROKER = "broker.hivemq.com"
 TOPIC = "petguardian/light"
 
 # Setup GPIO pin if using physical sensor
@@ -26,15 +26,20 @@ if REAL_SENSOR:
 def send_data_to_cloud(light_data):
     """Send light sensor data to MQTT broker."""
     client = mqtt.Client()
-    client.connect(BROKER)
-    payload = json.dumps({
-        "sensor": "simulated_led_light",
-        "lux": light_data["lux"],
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-    })
-    client.publish(TOPIC, payload)
-    client.disconnect()
-    print(f"Sent Light Data to MQTT Broker: {payload}")
+    try:
+        client.connect(BROKER, port=1883, keepalive=60)
+        payload = json.dumps({
+            "sensor": "simulated_led_light",
+            "lux": light_data["lux"],
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        client.publish(TOPIC, payload)
+        print(f"Sent Light Data to MQTT Broker: {payload}")
+    except Exception as e:
+        print(f"❌ Failed to connect to MQTT broker: {e}")
+    finally:
+        client.disconnect()
+
 
 def log_light_data(light_data):
     """Logs light sensor data into a JSON file."""
