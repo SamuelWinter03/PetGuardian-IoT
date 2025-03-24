@@ -4,29 +4,31 @@ import os
 import random
 import paho.mqtt.client as mqtt
 
-# Try to import Raspberry Pi I2C library; if unavailable, use virtual mode
+# Try to import Raspberry Pi GPIO library
 try:
-    from smbus2 import SMBus
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
     REAL_SENSOR = True
 except ImportError:
-    print("Light sensor module not found! Running in virtual mode...")
+    print("GPIO module not found! Running in virtual mode...")
     REAL_SENSOR = False
 
-# BH1750 I2C Address (For Physical Sensor)
-BH1750_ADDR = 0x23  
-
+# Configuration
+SENSOR_PIN = 17  # GPIO pin to simulate light detection (e.g., button or photodiode)
 BROKER = "test.mosquitto.org"
 TOPIC = "petguardian/light"
 
+# Setup GPIO pin if using physical sensor
 if REAL_SENSOR:
-    bus = SMBus(1)  # I2C Bus on Raspberry Pi
+    GPIO.setup(SENSOR_PIN, GPIO.IN)
 
 def send_data_to_cloud(light_data):
     """Send light sensor data to MQTT broker."""
     client = mqtt.Client()
     client.connect(BROKER)
     payload = json.dumps({
-        "sensor": "light",
+        "sensor": "simulated_led_light",
         "lux": light_data["lux"],
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
     })
@@ -46,11 +48,11 @@ def log_light_data(light_data):
             with open("light_log.json", "r") as log_file:
                 logs = json.load(log_file)
             if not isinstance(logs, list):
-                logs = []  
+                logs = []
         except (json.JSONDecodeError, FileNotFoundError):
-            logs = []  
+            logs = []
     else:
-        logs = []  
+        logs = []
 
     logs.append(log_entry)
 
@@ -60,26 +62,30 @@ def log_light_data(light_data):
     print(f"Logged Light Data: {log_entry}")
 
 def get_light_level():
-    """Gets light sensor data from real sensor or generates mock data."""
+    """Gets light level from physical sensor or simulates it."""
     if REAL_SENSOR:
-        data = bus.read_i2c_block_data(BH1750_ADDR, 0x10, 2)
-        lux = (data[0] << 8) | data[1]  # Convert raw data to Lux
-        return {"lux": lux}
+        if GPIO.input(SENSOR_PIN):
+            lux = random.uniform(300, 1000)  # Simulate bright environment
+        else:
+            lux = random.uniform(0, 299)     # Simulate dark environment
     else:
-        return {"lux": random.uniform(0, 1000)}  # Simulating Lux values
+        lux = random.uniform(0, 1000)        # Fully virtual
+    return {"lux": lux}
 
 def light_tracking():
     """Tracks and logs light sensor data continuously."""
-    print("Light Sensor Active...")
+    print("Light Sensor (Physical/Virtual) Active...")
 
     while True:
         light_data = get_light_level()
         log_light_data(light_data)
         send_data_to_cloud(light_data)
-        time.sleep(5)  # Adjust tracking interval
+        time.sleep(5)
 
 if __name__ == "__main__":
     try:
         light_tracking()
     except KeyboardInterrupt:
-        print("\n Stopping light sensor tracking...")
+        if REAL_SENSOR:
+            GPIO.cleanup()
+        print("\nStopping light sensor tracking...")
