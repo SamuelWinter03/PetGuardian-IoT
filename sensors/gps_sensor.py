@@ -35,16 +35,14 @@ database = cosmos_client.get_database_client(DATABASE_NAME)
 container = database.get_container_client(CONTAINER_NAME)
 
 def get_gps_location():
-    """Gets GPS data from sensor or generates mock data."""
-    if REAL_SENSOR:
-        gpsd.connect()
-        packet = gpsd.get_current()
-        return {"latitude": packet.lat, "longitude": packet.lon}
-    else:
-        return {
-            "latitude": 51.5074 + random.uniform(-0.01, 0.01),
-            "longitude": -0.1278 + random.uniform(-0.01, 0.01)
-        }
+    """Reads the latest mock GPS data from mock_gps.json."""
+    try:
+        with open("mock_gps.json", "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error reading GPS data: {e}")
+        return {"latitude": 0.0, "longitude": 0.0}
+
 
 def send_data_to_mqtt(location):
     """Send GPS data to MQTT broker."""
