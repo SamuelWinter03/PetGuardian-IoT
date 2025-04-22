@@ -32,7 +32,7 @@ class ThreatDetector:
         """
         # Check for GPS timeout
         if self.awaiting_gps_since and time.time() - self.awaiting_gps_since > 15:
-            print("⏱️ GPS timeout — no fix received within 15 seconds. Assuming pet is outside zone.")
+            print("GPS timeout — no fix received within 15 seconds. Assuming pet is outside zone.")
             self.awaiting_gps = False
             self.awaiting_gps_since = None
             self.latest_gps = None  # Will log "unknown"
@@ -69,7 +69,7 @@ class ThreatDetector:
             if now - self.last_trigger_time >= self.threat_cooldown_seconds:
                 self.awaiting_gps = True
                 self.awaiting_gps_since = now
-                print("📡 Sound spike detected — awaiting GPS position.")
+                print("Sound spike detected — awaiting GPS position.")
                 return "awaiting_gps"
 
         return False
@@ -82,7 +82,7 @@ class ThreatDetector:
             self.latest_gps = (float(lat), float(lon))
         except (TypeError, ValueError):
             self.latest_gps = None
-            print("⚠️ Invalid GPS received — assuming outside zone.")
+            print("Invalid GPS received — assuming outside zone.")
             return False
 
         if not self.awaiting_gps:
@@ -97,7 +97,7 @@ class ThreatDetector:
             outside_zone = self._is_outside_safe_zone()
 
         if self.home_location and not outside_zone:
-            print("✅ Inside safe zone. No threat.")
+            print("Inside safe zone. No threat.")
             self.sound_timestamps.clear()
             return False
 
@@ -156,7 +156,7 @@ class ThreatDetector:
         with open(log_path, "w") as file:
             json.dump(logs, file, indent=4)
 
-        print("\n⚠️ THREAT DETECTED!")
+        print("\n **THREAT DETECTED!")
         print(f"- Time: {timestamp}")
         print(f"- Location: {gps}")
         print(f"- Logged to: {log_path}")
