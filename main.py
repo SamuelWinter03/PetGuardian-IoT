@@ -20,8 +20,8 @@ def run_acoustic_full(stop_event):
 
 def main():
     gps_thread     = threading.Thread(target=lambda: safe_start("GPS", gps_sensor.start_gps_listener))
-    cam_thread     = threading.Thread(target=lambda: safe_start("Camera", camera_sensor.start_camera_listener))
-    ai_thread      = threading.Thread(target=lambda: safe_start("AI", ai_controller.start_ai_listener))
+    cam_thread = threading.Thread(target=lambda: safe_start("Camera", lambda: camera_sensor.start_camera_listener()))
+    ai_thread = threading.Thread(target=lambda: safe_start("AI", lambda: ai_controller.start_ai_listener()))
     acoustic_thread = threading.Thread(target=lambda: run_acoustic_full(stop_event))
 
     gps_thread.start()
