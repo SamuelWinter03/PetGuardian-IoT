@@ -109,7 +109,7 @@ def start_acoustic_sensor():
 
         try:
             while True:
-                if GPIO.input(SOUND_SENSOR_PIN) == GPIO.HIGH:
+                if GPIO.input(SOUND_SENSOR_PIN) == GPIO.LOW:
                     print("[EVENT] Real sound detected.")
                     handle_sound_event()
                     time.sleep(0.5)
