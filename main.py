@@ -2,6 +2,7 @@ import threading
 import time
 from sensors import gps_sensor, camera_sensor, acoustic_sensor
 from ai import ai_controller
+logging.getLogger("azure").setLevel(logging.ERROR)
 
 def safe_start(name, func):
     try:
