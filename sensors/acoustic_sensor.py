@@ -101,26 +101,27 @@ def handle_sound_event():
     send_to_azure("loud_noise", timestamp)
 
 # Acoustic sensor logic
-def start_acoustic_sensor():
+def start_acoustic_sensor(stop_event=None):
     if REAL_SENSOR:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(SOUND_SENSOR_PIN, GPIO.IN)
         print("[MODE] Real sensor mode active. Listening for sound events.")
-
         try:
-            while True:
+            while not (stop_event and stop_event.is_set()):
                 if GPIO.input(SOUND_SENSOR_PIN) == GPIO.LOW:
                     print("[EVENT] Real sound detected.")
                     handle_sound_event()
                     time.sleep(0.5)
         except KeyboardInterrupt:
+            pass
+        finally:
             GPIO.cleanup()
             print("[EXIT] Real sensor listening stopped.")
 
     elif INTERACTIVE_MODE:
         print("[MODE] Interactive keyboard mode: Type 'S' to trigger event, 'X' to exit.")
         try:
-            while True:
+            while not (stop_event and stop_event.is_set()):
                 user_input = input(">>> ").strip().lower()
                 if user_input == 's':
                     print("[INPUT] Manually triggered sound event.")
@@ -131,13 +132,14 @@ def start_acoustic_sensor():
         except KeyboardInterrupt:
             print("[EXIT] Interactive mode stopped.")
 
-
     else:
         print("[MODE] Virtual simulation mode. Auto-generating sound events.")
         time.sleep(4)
         try:
-            while True:
+            while not (stop_event and stop_event.is_set()):
                 for _ in range(3):
+                    if stop_event and stop_event.is_set():
+                        break
                     delay = random.uniform(1, 3)
                     time.sleep(delay)
                     print("[SIMULATION] Generated simulated sound event.")
@@ -146,6 +148,9 @@ def start_acoustic_sensor():
                 time.sleep(cooldown)
         except KeyboardInterrupt:
             print("[EXIT] Simulation stopped.")
+
+
+
 
 # MQTT connection with retries
 def start_acoustic_listener():

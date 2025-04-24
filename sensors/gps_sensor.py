@@ -188,7 +188,7 @@ def on_message(client, userdata, msg):
 
 # MQTT listener
 
-def start_gps_listener():
+def start_gps_listener(stop_event=None):
     print("[MQTT] Starting GPS listener...")
 
     mqtt_client.on_connect = on_connect
@@ -212,16 +212,17 @@ if __name__ == "__main__":
 
     # Interactive mode logic
     if GPS_MODE:
-        print("[INTERACTIVE] Type 'G' then Enter to trigger GPS, or 'X' to exit.")
-        try:
-            while True:
-                user_input = input("[INPUT] >> ").strip().lower()
-                if user_input == 'g':
-                    print("[INPUT] Manual GPS trigger activated.")
-                    run_gps_once()
-                elif user_input == 'x':
-                    print("[EXIT] Exiting GPS interactive mode.")
-                    break
-        except KeyboardInterrupt:
-            print("[EXIT] GPS interactive loop interrupted.")
+      print("[INTERACTIVE] Type 'G' then Enter to trigger GPS, or 'X' to exit.")
+    try:
+        while True:
+            user_input = input("[INPUT] >> ").strip().lower()
+            if user_input == 'g':
+                print("[INPUT] Manual GPS trigger activated.")
+                run_gps_once()
+            elif user_input == 'x':
+                print("[EXIT] Exiting GPS interactive mode.")
+                break
+    except KeyboardInterrupt:
+        print("[EXIT] GPS interactive loop interrupted.")
+
 

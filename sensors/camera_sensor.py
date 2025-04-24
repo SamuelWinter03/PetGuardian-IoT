@@ -205,6 +205,7 @@ def start_camera_listener():
 if __name__ == "__main__":
     start_camera_listener()
 
+    # Interactive Mode
     if CAMERA_MODE:
         print("[INTERACTIVE] Type 'C' to capture, or 'X' to exit.")
         try:
