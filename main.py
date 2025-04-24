@@ -5,9 +5,8 @@ from sensors import gps_sensor, camera_sensor, acoustic_sensor
 from ai import ai_controller
 
 logging.getLogger("azure").setLevel(logging.ERROR)
-stop_event = threading.Event()
 
-def safe_start(name, func):
+def safe_start(name, func, stop_event):
     try:
         print(f" Starting {name} listener thread...")
         func(stop_event)
@@ -19,10 +18,12 @@ def run_acoustic_full(stop_event):
     acoustic_sensor.start_acoustic_sensor(stop_event)
 
 def main():
-    gps_thread     = threading.Thread(target=lambda: safe_start("GPS", gps_sensor.start_gps_listener))
-    cam_thread = threading.Thread(target=lambda: safe_start("Camera", lambda: camera_sensor.start_camera_listener()))
-    ai_thread = threading.Thread(target=lambda: safe_start("AI", lambda: ai_controller.start_ai_listener()))
-    acoustic_thread = threading.Thread(target=lambda: run_acoustic_full(stop_event))
+    stop_event = threading.Event()
+
+    gps_thread = threading.Thread(target=safe_start, args=("GPS", gps_sensor.start_gps_listener, stop_event))
+    cam_thread = threading.Thread(target=safe_start, args=("Camera", camera_sensor.start_camera_listener, stop_event))
+    ai_thread = threading.Thread(target=safe_start, args=("AI", ai_controller.start_ai_listener, stop_event))
+    acoustic_thread = threading.Thread(target=run_acoustic_full, args=(stop_event,))
 
     gps_thread.start()
     time.sleep(2)
