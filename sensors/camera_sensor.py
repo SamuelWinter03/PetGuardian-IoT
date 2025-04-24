@@ -180,7 +180,7 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print(f"[MQTT ERROR] Failed to process message: {e}")
 
-def start_camera_listener():
+def start_camera_listener(stop_event=None):
     global mqtt_client
     mqtt_client = mqtt.Client(client_id="camera_sensor")
     mqtt_client.username_pw_set(USERNAME, PASSWORD)

@@ -64,7 +64,7 @@ def on_message(client, userdata, msg):
         print(f"Error processing message: {e}")
 
 # Listener function
-def start_ai_listener():
+def start_ai_listener(stop_event=None):
     print("Starting AI MQTT listener...")
     client = mqtt.Client(client_id="ai_controller")
     client.username_pw_set(USERNAME, PASSWORD)
